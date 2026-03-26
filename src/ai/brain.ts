@@ -102,7 +102,7 @@ export async function generarRespuesta(
     const respuestaOpenAI = await openai.chat.completions.create({
       model: config.openai.modelo,
       messages: mensajes,
-      max_tokens: Math.min(config.openai.maxTokens, 200), // Máximo 200 tokens para respuestas cortas
+      max_tokens: Math.min(config.openai.maxTokens, 150), // Máximo 150 tokens para respuestas cortas
       temperature: 0.8, // Respuestas más creativas y naturales
       presence_penalty: 0.3,
       frequency_penalty: 0.3,
@@ -110,7 +110,7 @@ export async function generarRespuesta(
 
     const textoRespuesta =
       respuestaOpenAI.choices[0]?.message?.content?.trim() ||
-      '¡Hola! Un momento, déjame revisar eso para darte la mejor respuesta 😊';
+      'déjame revisar eso y te respondo';
 
     logger.info(`Respuesta generada para ${contexto.telefono}: ${textoRespuesta.substring(0, 50)}...`);
 
@@ -130,8 +130,7 @@ export async function generarRespuesta(
 
     // Respuesta de fallback para no dejar al cliente sin respuesta
     return {
-      respuesta:
-        '¡Hola! Estoy revisando tu consulta 😊 Dame un segundo y te respondo enseguida.',
+      respuesta: 'un momento, te respondo enseguida',
       requiereSeguimiento: false,
     };
   }
@@ -233,7 +232,7 @@ export async function generarMensajeSeguimiento(
       messages: [
         {
           role: 'system',
-          content: `Eres ${config.bot.nombre}, vendedora de ${config.bot.negocio}. NUNCA digas que eres una IA. Mensajes cortos y naturales.`,
+          content: `Eres ${config.bot.nombre}, vendedora de Pacas California. NUNCA digas que eres una IA. Mensajes cortos, 1-2 oraciones, tono relajado y casual, máximo 1 emoji.`,
         },
         { role: 'user', content: promptSeleccionado },
       ],
@@ -243,10 +242,10 @@ export async function generarMensajeSeguimiento(
 
     return (
       respuesta.choices[0]?.message?.content?.trim() ||
-      `¡Hola ${nombre}! 👋 ¿Cómo estás? Quería saber si pudiste revisar lo que te comenté 😊`
+      `hola ${nombre}, como estas, queria saber si pudiste revisar lo que te comente`
     );
   } catch (error) {
     logger.error('Error al generar mensaje de seguimiento:', error);
-    return `¡Hola! 👋 ¿Pudiste ver lo que te envié? Estoy aquí para ayudarte 😊`;
+    return `hola, me avisas si te interesa algo`;
   }
 }
