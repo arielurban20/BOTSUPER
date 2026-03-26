@@ -127,6 +127,69 @@ export async function obtenerEstadisticasClientes(): Promise<{
   }
 }
 
+// Pausar el bot para un cliente (modo humano)
+export async function pausarCliente(telefono: string): Promise<void> {
+  const telefonoLimpio = limpiarTelefono(telefono);
+  try {
+    await prisma.customer.update({
+      where: { telefono: telefonoLimpio },
+      data: { pausado: true, pausadoEn: new Date() },
+    });
+    logger.info(`🔴 Bot pausado para cliente ${telefonoLimpio}`);
+  } catch (error) {
+    logger.error(`Error al pausar cliente ${telefonoLimpio}:`, error);
+    throw error;
+  }
+}
+
+// Reactivar el bot para un cliente
+export async function reactivarCliente(telefono: string): Promise<void> {
+  const telefonoLimpio = limpiarTelefono(telefono);
+  try {
+    await prisma.customer.update({
+      where: { telefono: telefonoLimpio },
+      data: { pausado: false, pausadoEn: null },
+    });
+    logger.info(`🟢 Bot reactivado para cliente ${telefonoLimpio}`);
+  } catch (error) {
+    logger.error(`Error al reactivar cliente ${telefonoLimpio}:`, error);
+    throw error;
+  }
+}
+
+// Verificar si el bot está pausado para un cliente
+export async function clientePausado(customerId: string): Promise<boolean> {
+  try {
+    const cliente = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { pausado: true },
+    });
+    return cliente?.pausado ?? false;
+  } catch (error) {
+    logger.error(`Error al verificar pausa del cliente ${customerId}:`, error);
+    return false;
+  }
+}
+
+// Reactivar clientes pausados hace más de 30 minutos
+export async function reactivarClientesPausadosMucho(): Promise<void> {
+  try {
+    const hace30min = new Date(Date.now() - 30 * 60 * 1000);
+    const resultado = await prisma.customer.updateMany({
+      where: {
+        pausado: true,
+        pausadoEn: { lte: hace30min },
+      },
+      data: { pausado: false, pausadoEn: null },
+    });
+    if (resultado.count > 0) {
+      logger.info(`🟢 Auto-reactivados ${resultado.count} cliente(s) pausados hace más de 30 minutos`);
+    }
+  } catch (error) {
+    logger.error('Error al auto-reactivar clientes pausados:', error);
+  }
+}
+
 // Detectar nombre del cliente en el mensaje
 export function extraerNombreDeTexto(texto: string): string | null {
   // Patrones comunes para detectar nombre

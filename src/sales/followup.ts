@@ -9,6 +9,8 @@ import { formatearCatalogoParaIA } from '../sales/catalog';
 import { calcularFechaFutura, calcularFechaFuturaHoras, calcularFechaFuturaDias, esHorarioLaboral } from '../utils/helpers';
 import { enviarMensajeTexto } from '../whatsapp/sender';
 
+import { reactivarClientesPausadosMucho } from '../services/customer';
+
 // Tiempos de seguimiento en minutos
 const TIEMPOS_SEGUIMIENTO: Record<TipoFollowUp, number> = {
   PRIMER_SEGUIMIENTO: 30,            // 30 minutos
@@ -220,6 +222,7 @@ export function iniciarCronSeguimientos(): void {
   // Ejecutar cada 5 minutos
   cron.schedule('*/5 * * * *', async () => {
     await ejecutarSeguimientosPendientes();
+    await reactivarClientesPausadosMucho();
   });
 
   logger.info('⏰ Cron de seguimientos automáticos iniciado (cada 5 minutos)');

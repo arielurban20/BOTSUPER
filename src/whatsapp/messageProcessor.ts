@@ -8,7 +8,7 @@ import { formatearCatalogoParaIA } from '../sales/catalog';
 import { obtenerOCrearPipeline, actualizarEtapaPipeline, parsearEtapa, debeCrearSeguimiento } from '../sales/pipeline';
 import { programarSeguimientos, cancelarSeguimientos } from '../sales/followup';
 import { detectarSeñalesCompra, obtenerMensajeProcesoPago } from '../sales/closer';
-import { obtenerOCrearCliente, actualizarNombreCliente, extraerNombreDeTexto } from '../services/customer';
+import { obtenerOCrearCliente, actualizarNombreCliente, extraerNombreDeTexto, pausarCliente, reactivarCliente, clientePausado } from '../services/customer';
 import { guardarMensaje, obtenerHistorialParaIA } from '../services/conversation';
 import { enviarMensajeTexto, marcarComoLeido, enviarTypingIndicator, calcularDelayTipeo } from './sender';
 import type { WebhookMessage, WebhookContact } from './webhook';
@@ -34,6 +34,13 @@ export async function procesarMensajeEntrante(
     // Marcar como leído
     await marcarComoLeido(messageId);
 
+    // Detectar comandos del dueño (#humano, #bot, #estado) antes de cualquier procesamiento
+    const textoTrimmed = textoMensaje.trim();
+    if (textoTrimmed.startsWith('#')) {
+      await procesarComando(textoTrimmed, telefono);
+      return;
+    }
+
     // Obtener o crear cliente
     const nombreContacto = contactos.find((c) => c.wa_id === telefono)?.profile?.name;
     const cliente = await obtenerOCrearCliente(telefono, nombreContacto);
@@ -43,6 +50,12 @@ export async function procesarMensajeEntrante(
 
     // Actualizar último contacto
     await cancelarSeguimientos(cliente.id);
+
+    // Si el bot está pausado para este cliente, solo guardar el mensaje y no responder
+    if (await clientePausado(cliente.id)) {
+      logger.info(`⏸️ Bot pausado para ${telefono} — mensaje guardado sin respuesta`);
+      return;
+    }
 
     // Verificar horario laboral
     if (!esHorarioLaboral(config.horario.inicio, config.horario.fin)) {
@@ -103,6 +116,12 @@ export async function procesarMensajeEntrante(
 
     // Guardar respuesta en el historial
     await guardarMensaje(cliente.id, respuestaFinal, TipoMensaje.SALIENTE);
+
+    // Auto-pausar si Sofia no sabe algo (menciona al socio)
+    if (/confirmarlo con mi socio|te aviso en unos minutos/i.test(respuestaFinal)) {
+      await pausarCliente(telefono);
+      logger.info(`⏸️ Bot auto-pausado para ${telefono} porque Sofia no supo responder`);
+    }
 
     // Programar seguimientos si aplica
     const etapaActualizada = resultado.nuevaEtapa
@@ -174,6 +193,39 @@ async function manejarFueraDeHorario(telefono: string, customerId: string): Prom
     await guardarMensaje(customerId, mensajeFueraHorario, TipoMensaje.SALIENTE);
   } catch (error) {
     logger.error('Error al enviar mensaje fuera de horario:', error);
+  }
+}
+
+// Procesar comandos del dueño (#humano, #bot, #estado)
+async function procesarComando(texto: string, telefono: string): Promise<void> {
+  const comando = texto.toLowerCase();
+
+  try {
+    if (comando === '#humano') {
+      await pausarCliente(telefono);
+      await enviarMensajeTexto(
+        telefono,
+        '🔴 Bot PAUSADO para este cliente. Ahora puedes responder manualmente. Escribe #bot cuando termines.'
+      );
+      logger.info(`🔴 Comando #humano ejecutado para ${telefono}`);
+    } else if (comando === '#bot') {
+      await reactivarCliente(telefono);
+      await enviarMensajeTexto(
+        telefono,
+        '🟢 Bot ACTIVADO para este cliente. Sofia retomará la conversación automáticamente.'
+      );
+      logger.info(`🟢 Comando #bot ejecutado para ${telefono}`);
+    } else if (comando === '#estado') {
+      const cliente = await obtenerOCrearCliente(telefono);
+      const pausado = await clientePausado(cliente.id);
+      const estadoTexto = pausado ? 'PAUSADO 🔴' : 'ACTIVO 🟢';
+      await enviarMensajeTexto(telefono, `ℹ️ Estado del bot para este cliente: ${estadoTexto}`);
+      logger.info(`ℹ️ Comando #estado ejecutado para ${telefono}: ${estadoTexto}`);
+    } else {
+      logger.debug(`Comando desconocido ignorado: ${texto} de ${telefono}`);
+    }
+  } catch (error) {
+    logger.error(`Error al procesar comando "${texto}" para ${telefono}:`, error);
   }
 }
 
