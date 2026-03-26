@@ -18,6 +18,8 @@ model Customer {
   email         String?
   notas         String?
   etiquetas     String[]      @default([])
+  pausado       Boolean       @default(false)
+  pausadoEn     DateTime?
   fechaRegistro DateTime      @default(now())
   ultimoContacto DateTime     @default(now())
   createdAt     DateTime      @default(now())
