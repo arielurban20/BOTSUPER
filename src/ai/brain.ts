@@ -102,7 +102,7 @@ export async function generarRespuesta(
     const respuestaOpenAI = await openai.chat.completions.create({
       model: config.openai.modelo,
       messages: mensajes,
-      max_tokens: config.openai.maxTokens,
+      max_tokens: Math.min(config.openai.maxTokens, 200), // Máximo 200 tokens para respuestas cortas
       temperature: 0.8, // Respuestas más creativas y naturales
       presence_penalty: 0.3,
       frequency_penalty: 0.3,

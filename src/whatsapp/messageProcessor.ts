@@ -10,7 +10,7 @@ import { programarSeguimientos, cancelarSeguimientos } from '../sales/followup';
 import { detectarSeñalesCompra, obtenerMensajeProcesoPago } from '../sales/closer';
 import { obtenerOCrearCliente, actualizarNombreCliente, extraerNombreDeTexto } from '../services/customer';
 import { guardarMensaje, obtenerHistorialParaIA } from '../services/conversation';
-import { enviarMensajeTexto, marcarComoLeido } from './sender';
+import { enviarMensajeTexto, marcarComoLeido, enviarTypingIndicator, calcularDelayTipeo } from './sender';
 import type { WebhookMessage, WebhookContact } from './webhook';
 
 // Procesar un mensaje entrante
@@ -94,8 +94,11 @@ export async function procesarMensajeEntrante(
       await actualizarEtapaPipeline(cliente.id, EtapaPipeline.CIERRE);
     }
 
-    // Enviar respuesta al cliente
+    // Enviar respuesta al cliente con delay humanizado (simula tipeo)
     const respuestaFinal = resultado.respuesta;
+    const delayMs = calcularDelayTipeo(respuestaFinal);
+    await enviarTypingIndicator(telefono);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
     await enviarMensajeTexto(telefono, respuestaFinal);
 
     // Guardar respuesta en el historial

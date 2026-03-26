@@ -266,3 +266,31 @@ export async function enviarMensajesConRetraso(
     }
   }
 }
+
+// Enviar indicador de "escribiendo..." (typing indicator)
+export async function enviarTypingIndicator(telefono: string): Promise<void> {
+  try {
+    const url = `${config.whatsapp.apiUrl}/${config.whatsapp.apiVersion}/${config.whatsapp.phoneId}/messages`;
+    await axios.post(
+      url,
+      {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: telefono,
+        type: 'typing',
+        typing: { action: 'typing_on' },
+      },
+      { headers: HEADERS }
+    );
+  } catch {
+    // El typing indicator no es crítico, ignorar si falla
+    logger.debug(`No se pudo enviar typing indicator a ${telefono}`);
+  }
+}
+
+// Calcular delay humanizado basado en la longitud del mensaje (min 2s, max 8s)
+// 30ms por carácter simula una velocidad de tipeo de ~33 caracteres por segundo
+export function calcularDelayTipeo(mensaje: string): number {
+  const MS_POR_CARACTER = 30;
+  return Math.min(Math.max(mensaje.length * MS_POR_CARACTER, 2000), 8000);
+}
