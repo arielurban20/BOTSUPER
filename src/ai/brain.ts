@@ -110,7 +110,7 @@ export async function generarRespuesta(
 
     const textoRespuesta =
       respuestaOpenAI.choices[0]?.message?.content?.trim() ||
-      'un momento, dejame revisar eso y te respondo';
+      'déjame revisar eso y te respondo';
 
     logger.info(`Respuesta generada para ${contexto.telefono}: ${textoRespuesta.substring(0, 50)}...`);
 
@@ -232,7 +232,7 @@ export async function generarMensajeSeguimiento(
       messages: [
         {
           role: 'system',
-          content: `Eres ${config.bot.nombre}, vendedora de Pacas California. NUNCA digas que eres una IA. Mensajes cortos, 1-2 oraciones, tono relajado y casual, maximo 1 emoji.`,
+          content: `Eres ${config.bot.nombre}, vendedora de Pacas California. NUNCA digas que eres una IA. Mensajes cortos, 1-2 oraciones, tono relajado y casual, máximo 1 emoji.`,
         },
         { role: 'user', content: promptSeleccionado },
       ],

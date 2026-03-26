@@ -18,9 +18,9 @@ export function generarSystemPrompt(contexto: ContextoPrompt): string {
 
 NEGOCIO:
 - Nombre: Pacas California
-- Ubicacion: Alondra, California
+- Ubicación: Alondra, California
 - Facebook: https://www.facebook.com/Leonorpr23
-- Envios: a la casa del cliente o a su casillero en Miami
+- Envíos: a la casa del cliente o a su casillero en Miami
 - NO contra entrega (envios internacionales)
 - NO videollamadas, si llamadas normales
 
@@ -41,7 +41,7 @@ RESPUESTAS ESPECIALES:
 - Si piden videollamada: "no hacemos videollamadas pero si llamadas normales"
 - Si tienen miedo o desconfianza: "jaja suele pasar pero tranquilo, revisa nuestra pagina de Facebook y si quieres te paso la direccion aqui en California" — NO seas defensivo ni agresivo
 - Si preguntan de donde son: "estamos en Alondra California"
-- Si preguntan por envios: "claro te hacemos el envio a tu casa directamente o a tu casillero en Miami"
+- Si preguntan por envíos: "claro te hacemos el envío a tu casa directamente o a tu casillero en Miami"
 
 CUANDO EL CLIENTE QUIERE COMPRAR - pedir estos datos en un solo mensaje:
 nombre completo, pais, direccion, ciudad, telefono y correo
@@ -106,24 +106,24 @@ export function generarPromptSeguimiento(
   const nombre = nombreCliente ? nombreCliente : 'amigo';
 
   const plantillas: Record<string, string> = {
-    PRIMER_SEGUIMIENTO: `Genera un mensaje corto y casual para ${nombre} que mostro interes hace 30 minutos pero no respondio.
+    PRIMER_SEGUIMIENTO: `Genera un mensaje corto y casual para ${nombre} que mostró interés hace 30 minutos pero no respondió.
     Tono relajado, 1-2 oraciones, sin emojis exagerados. No seas agresivo.
     Catalogo: ${catalogoProductos}`,
 
     SEGUNDO_SEGUIMIENTO: `Genera un mensaje corto para ${nombre} mencionando que tienes clientes contentos.
     Tono casual y relajado, 1-2 oraciones. Catalogo: ${catalogoProductos}`,
 
-    TERCER_SEGUIMIENTO: `Genera un mensaje corto para ${nombre} diciendole que quedan pocas unidades.
+    TERCER_SEGUIMIENTO: `Genera un mensaje corto para ${nombre} diciéndole que quedan pocas unidades.
     Tono relajado, directo, 1-2 oraciones. Catalogo: ${catalogoProductos}`,
 
-    CUARTO_SEGUIMIENTO: `Genera un mensaje para ${nombre} mencionando que el stock esta bajando.
+    CUARTO_SEGUIMIENTO: `Genera un mensaje para ${nombre} mencionando que el stock está bajando.
     1 oracion, tono natural. Catalogo: ${catalogoProductos}`,
 
-    QUINTO_SEGUIMIENTO: `Genera el ultimo mensaje para ${nombre}, directo y sin presion.
+    QUINTO_SEGUIMIENTO: `Genera el último mensaje para ${nombre}, directo y sin presión.
     1-2 oraciones, tono amigable. Catalogo: ${catalogoProductos}`,
 
-    RECONEXION: `Genera un saludo muy corto para ${nombre} despues de una semana sin respuesta.
-    Solo pregunta como esta, 1 oracion, sin mencionar ventas.`,
+    RECONEXION: `Genera un saludo muy corto para ${nombre} después de una semana sin respuesta.
+    Solo pregunta cómo está, 1 oración, sin mencionar ventas.`,
   };
 
   return plantillas[tipoSeguimiento] || plantillas['PRIMER_SEGUIMIENTO'] || '';
@@ -133,7 +133,7 @@ export function generarPromptSeguimiento(
 export function generarPromptBienvenida(esNuevoCliente: boolean): string {
   if (esNuevoCliente) {
     return `Genera un saludo corto y natural para un cliente nuevo de Pacas California.
-    Tono relajado como en WhatsApp, 1-2 oraciones, maximo 1 emoji. Pregunta desde donde escribe.`;
+    Tono relajado como en WhatsApp, 1-2 oraciones, máximo 1 emoji. Pregunta desde donde escribe.`;
   }
   return `Genera un saludo corto para un cliente que regresa.
   Tono casual, 1 oracion, maximo 1 emoji.`;
@@ -142,7 +142,7 @@ export function generarPromptBienvenida(esNuevoCliente: boolean): string {
 // Prompt para generar oferta de upselling
 export function generarPromptUpsell(productoComprado: string, catalogoProductos: string): string {
   return `El cliente acaba de comprar: ${productoComprado}
-  Genera un mensaje corto ofreciendo un producto complementario del catalogo.
+  Genera un mensaje corto ofreciendo un producto complementario del catálogo.
   Tono relajado, 1-2 oraciones, sin emojis exagerados.
-  Catalogo disponible: ${catalogoProductos}`;
+  Catálogo disponible: ${catalogoProductos}`;
 }
