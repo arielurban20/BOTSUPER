@@ -1,0 +1,194 @@
+// Esquema de Base de Datos - Super Bot de Ventas WhatsApp
+// Conectado a PostgreSQL en Railway
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de Cliente
+model Customer {
+  id            String        @id @default(cuid())
+  telefono      String        @unique
+  nombre        String?
+  email         String?
+  notas         String?
+  etiquetas     String[]      @default([])
+  fechaRegistro DateTime      @default(now())
+  ultimoContacto DateTime     @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relaciones
+  conversaciones Conversation[]
+  pedidos        Order[]
+  pipeline       SalesPipeline?
+  seguimientos   FollowUp[]
+
+  @@map("customers")
+}
+
+// Historial completo de conversaciones
+model Conversation {
+  id         String   @id @default(cuid())
+  customerId String
+  mensaje    String
+  tipo       TipoMensaje
+  messageId  String?  // ID del mensaje de WhatsApp
+  leido      Boolean  @default(false)
+  metadata   Json?    // Datos adicionales (tipo de media, botones, etc.)
+  createdAt  DateTime @default(now())
+
+  // Relaciones
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("conversations")
+}
+
+// Catálogo de Productos
+model Product {
+  id          String   @id @default(cuid())
+  nombre      String
+  descripcion String
+  precio      Decimal  @db.Decimal(10, 2)
+  precioOferta Decimal? @db.Decimal(10, 2)
+  stock       Int      @default(0)
+  imagenUrl   String?
+  categoria   String?
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  orderItems  OrderItem[]
+
+  @@map("products")
+}
+
+// Pedidos
+model Order {
+  id         String      @id @default(cuid())
+  customerId String
+  total      Decimal     @db.Decimal(10, 2)
+  estado     EstadoPedido @default(PENDIENTE)
+  notas      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  // Relaciones
+  customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items      OrderItem[]
+
+  @@index([customerId])
+  @@map("orders")
+}
+
+// Items del Pedido
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  cantidad  Int     @default(1)
+  precio    Decimal @db.Decimal(10, 2)
+
+  // Relaciones
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+// Pipeline de Ventas - Estado actual del cliente
+model SalesPipeline {
+  id          String        @id @default(cuid())
+  customerId  String        @unique
+  etapa       EtapaPipeline @default(NUEVO)
+  valorEstimado Decimal?    @db.Decimal(10, 2)
+  notas       String?
+  ultimaActualizacion DateTime @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relaciones
+  customer    Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("sales_pipeline")
+}
+
+// Seguimientos Programados
+model FollowUp {
+  id               String        @id @default(cuid())
+  customerId       String
+  fechaProgramada  DateTime
+  tipo             TipoFollowUp
+  mensaje          String
+  ejecutado        Boolean       @default(false)
+  fechaEjecucion   DateTime?
+  createdAt        DateTime      @default(now())
+
+  // Relaciones
+  customer         Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([fechaProgramada, ejecutado])
+  @@map("follow_ups")
+}
+
+// Configuración del Bot
+model BotConfig {
+  id                   String   @id @default(cuid())
+  nombreNegocio        String   @default("Mi Negocio")
+  nombreBot            String   @default("Sofia")
+  personalidad         String   @default("amigable, persuasiva, profesional")
+  horarioInicio        Int      @default(8)   // Hora de inicio (24h)
+  horarioFin           Int      @default(21)  // Hora de fin (24h)
+  mensajeBienvenida    String   @default("¡Hola! Soy Sofía 👋 ¿En qué puedo ayudarte hoy?")
+  mensajeFueraHorario  String   @default("¡Hola! En este momento no estoy disponible. Te responderé en el horario de atención.")
+  activo               Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("bot_config")
+}
+
+// Enumeraciones
+enum TipoMensaje {
+  ENTRANTE   // Mensaje del cliente hacia el bot
+  SALIENTE   // Mensaje del bot hacia el cliente
+}
+
+enum EstadoPedido {
+  PENDIENTE
+  CONFIRMADO
+  EN_PROCESO
+  ENVIADO
+  ENTREGADO
+  CANCELADO
+}
+
+enum EtapaPipeline {
+  NUEVO        // Cliente que acaba de escribir por primera vez
+  INTERESADO   // Mostró interés en un producto
+  NEGOCIANDO   // Pidió precio o detalles
+  OBJECION     // Puso una objeción
+  CIERRE       // Está listo para comprar
+  VENDIDO      // Compra completada
+  PERDIDO      // No se logró la venta
+}
+
+enum TipoFollowUp {
+  PRIMER_SEGUIMIENTO     // 30 minutos
+  SEGUNDO_SEGUIMIENTO    // 4 horas
+  TERCER_SEGUIMIENTO     // 24 horas
+  CUARTO_SEGUIMIENTO     // 48 horas
+  QUINTO_SEGUIMIENTO     // 72 horas
+  RECONEXION             // 1 semana
+  UPSELL                 // Oferta de producto complementario
+  PERSONALIZADO          // Seguimiento manual
+}
