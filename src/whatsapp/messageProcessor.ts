@@ -1,8 +1,7 @@
 // Procesador de mensajes entrantes - Orquesta toda la lógica del bot
 import { TipoMensaje, EtapaPipeline } from '@prisma/client';
 import { logger } from '../utils/logger';
-import { config } from '../config/env';
-import { esHorarioLaboral, sanitizarTexto } from '../utils/helpers';
+import { sanitizarTexto } from '../utils/helpers';
 import { generarRespuesta } from '../ai/brain';
 import { formatearCatalogoParaIA } from '../sales/catalog';
 import { obtenerOCrearPipeline, actualizarEtapaPipeline, parsearEtapa, debeCrearSeguimiento } from '../sales/pipeline';
@@ -54,12 +53,6 @@ export async function procesarMensajeEntrante(
     // Si el bot está pausado para este cliente, solo guardar el mensaje y no responder
     if (await clientePausado(cliente.id)) {
       logger.info(`⏸️ Bot pausado para ${telefono} — mensaje guardado sin respuesta`);
-      return;
-    }
-
-    // Verificar horario laboral
-    if (!esHorarioLaboral(config.horario.inicio, config.horario.fin)) {
-      await manejarFueraDeHorario(telefono, cliente.id);
       return;
     }
 
@@ -174,25 +167,6 @@ function extraerTextoMensaje(mensaje: WebhookMessage): string | null {
 
     default:
       return null;
-  }
-}
-
-// Manejar mensaje fuera de horario
-async function manejarFueraDeHorario(telefono: string, customerId: string): Promise<void> {
-  try {
-    // Obtener mensaje de fuera de horario de la configuración
-    const botConfig = await import('../database/prisma').then((m) =>
-      m.prisma.botConfig.findFirst()
-    );
-
-    const mensajeFueraHorario =
-      botConfig?.mensajeFueraHorario ||
-      `¡Hola! Gracias por escribirme 😊 Nuestro horario de atención es de ${config.horario.inicio}:00 a ${config.horario.fin}:00 hs. Te respondo en cuanto estemos disponibles. ¡Hasta pronto!`;
-
-    await enviarMensajeTexto(telefono, mensajeFueraHorario);
-    await guardarMensaje(customerId, mensajeFueraHorario, TipoMensaje.SALIENTE);
-  } catch (error) {
-    logger.error('Error al enviar mensaje fuera de horario:', error);
   }
 }
 
