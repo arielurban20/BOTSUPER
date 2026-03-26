@@ -3,10 +3,9 @@ import cron from 'node-cron';
 import { TipoFollowUp } from '@prisma/client';
 import { prisma } from '../database/prisma';
 import { logger } from '../utils/logger';
-import { config } from '../config/env';
 import { generarMensajeSeguimiento } from '../ai/brain';
 import { formatearCatalogoParaIA } from '../sales/catalog';
-import { calcularFechaFutura, calcularFechaFuturaHoras, calcularFechaFuturaDias, esHorarioLaboral } from '../utils/helpers';
+import { calcularFechaFutura, calcularFechaFuturaHoras, calcularFechaFuturaDias } from '../utils/helpers';
 import { enviarMensajeTexto } from '../whatsapp/sender';
 
 import { reactivarClientesPausadosMucho } from '../services/customer';
@@ -60,9 +59,6 @@ export async function programarSeguimientos(customerId: string): Promise<void> {
         fechaProgramada = calcularFechaFuturaDias(minutosEspera / 1440);
       }
 
-      // Ajustar al horario laboral
-      fechaProgramada = ajustarAHorarioLaboral(fechaProgramada);
-
       const mensaje = await generarMensajeSeguimiento(
         tipo,
         cliente?.nombre || undefined,
@@ -112,7 +108,7 @@ export async function programarUpsell(customerId: string, productoComprado: stri
       `Producto comprado: ${productoComprado}\nCatálogo completo: ${catalogo}`
     );
 
-    const fechaProgramada = ajustarAHorarioLaboral(calcularFechaFuturaHoras(1));
+    const fechaProgramada = calcularFechaFuturaHoras(1);
 
     await prisma.followUp.create({
       data: {
@@ -133,12 +129,6 @@ export async function programarUpsell(customerId: string, productoComprado: stri
 export async function ejecutarSeguimientosPendientes(): Promise<void> {
   try {
     const ahora = new Date();
-
-    // Verificar si estamos en horario laboral
-    if (!esHorarioLaboral(config.horario.inicio, config.horario.fin)) {
-      logger.debug('Fuera de horario laboral, no se envían seguimientos');
-      return;
-    }
 
     const seguimientos = await prisma.followUp.findMany({
       where: {
@@ -199,22 +189,6 @@ export async function ejecutarSeguimientosPendientes(): Promise<void> {
   } catch (error) {
     logger.error('Error al ejecutar seguimientos pendientes:', error);
   }
-}
-
-// Ajustar fecha al horario laboral
-function ajustarAHorarioLaboral(fecha: Date): Date {
-  const ajustada = new Date(fecha);
-  const hora = ajustada.getHours();
-
-  if (hora < config.horario.inicio) {
-    ajustada.setHours(config.horario.inicio, 0, 0, 0);
-  } else if (hora >= config.horario.fin) {
-    // Pasar al día siguiente al horario de inicio
-    ajustada.setDate(ajustada.getDate() + 1);
-    ajustada.setHours(config.horario.inicio, 0, 0, 0);
-  }
-
-  return ajustada;
 }
 
 // Iniciar el cron job para seguimientos automáticos
