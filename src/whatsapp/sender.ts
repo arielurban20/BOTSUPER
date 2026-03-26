@@ -288,9 +288,16 @@ export async function enviarTypingIndicator(telefono: string): Promise<void> {
   }
 }
 
-// Calcular delay humanizado basado en la longitud del mensaje (min 2s, max 8s)
-// 30ms por carácter simula una velocidad de tipeo de ~33 caracteres por segundo
+// Calcular delay humanizado basado en la longitud del mensaje (min 4s, max 15s)
+// 80ms por carácter + variación aleatoria para parecer más natural
 export function calcularDelayTipeo(mensaje: string): number {
-  const MS_POR_CARACTER = 30;
-  return Math.min(Math.max(mensaje.length * MS_POR_CARACTER, 2000), 8000);
+  const MS_POR_CARACTER = 80;
+  const MIN_DELAY = 4000;
+  const MAX_DELAY = 15000;
+  const variacion = Math.floor(Math.random() * 2000);
+
+  return Math.min(
+    Math.max(mensaje.length * MS_POR_CARACTER + variacion, MIN_DELAY),
+    MAX_DELAY
+  );
 }
