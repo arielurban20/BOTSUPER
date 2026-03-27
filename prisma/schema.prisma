@@ -26,10 +26,12 @@ model Customer {
   updatedAt     DateTime      @updatedAt
 
   // Relaciones
-  conversaciones Conversation[]
-  pedidos        Order[]
-  pipeline       SalesPipeline?
-  seguimientos   FollowUp[]
+  conversaciones      Conversation[]
+  pedidos             Order[]
+  pipeline            SalesPipeline?
+  seguimientos        FollowUp[]
+  memoria             CustomerMemory?
+  resumenes           ConversationSummary[]
 
   @@map("customers")
 }
@@ -142,6 +144,63 @@ model FollowUp {
   @@map("follow_ups")
 }
 
+// Memoria persistente por cliente
+model CustomerMemory {
+  id                  String   @id @default(cuid())
+  customerId          String   @unique
+  nombre              String?
+  intereses           String[] @default([])
+  objeciones          String[] @default([])
+  presupuesto         String?
+  tonoConversacion    String?
+  intencionCompra     String?
+  datosRelevantes     Json?
+  ultimaActualizacion DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  customer            Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_memory")
+}
+
+// Aprendizajes estructurados del estilo del vendedor
+model SellerLearning {
+  id          String          @id @default(cuid())
+  tipo        TipoAprendizaje
+  contenido   String
+  contexto    String?
+  confianza   Float           @default(0.8)
+  aprobado    Boolean         @default(false)
+  origen      String          @default("manual")
+  vecesUsado  Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("seller_learnings")
+}
+
+// Resúmenes estructurados de conversaciones
+model ConversationSummary {
+  id                  String   @id @default(cuid())
+  customerId          String
+  intencionCliente    String?
+  productosInteres    String[] @default([])
+  objeciones          String[] @default([])
+  datosClave          Json?
+  probabilidadCompra  Float?
+  siguienteAccion     String?
+  totalMensajes       Int      @default(0)
+  periodoDesde        DateTime
+  periodoHasta        DateTime @default(now())
+  createdAt           DateTime @default(now())
+
+  customer            Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("conversation_summaries")
+}
+
 // Configuración del Bot
 model BotConfig {
   id                   String   @id @default(cuid())
@@ -193,4 +252,12 @@ enum TipoFollowUp {
   RECONEXION             // 1 semana
   UPSELL                 // Oferta de producto complementario
   PERSONALIZADO          // Seguimiento manual
+}
+
+enum TipoAprendizaje {
+  TONO             // Tono y estilo de comunicación
+  FRASE_CIERRE     // Frases usadas para cerrar ventas
+  MANEJO_OBJECION  // Cómo manejar objeciones específicas
+  PERSUASION       // Técnicas de persuasión
+  ESTRUCTURA       // Estructura de respuestas efectivas
 }

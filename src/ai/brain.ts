@@ -26,6 +26,8 @@ export interface ContextoConversacion {
   catalogoProductos?: string;
   etapaPipeline?: string;
   notasCliente?: string;
+  memoriaCliente?: string;
+  aprendizajesVendedor?: string;
 }
 
 export interface MensajeHistorial {
@@ -89,6 +91,8 @@ export async function generarRespuesta(
         catalogoProductos: contexto.catalogoProductos,
         etapaPipeline: contexto.etapaPipeline,
         notasCliente: contexto.notasCliente,
+        memoriaCliente: contexto.memoriaCliente,
+        aprendizajesVendedor: contexto.aprendizajesVendedor,
       }) + (contextoExtra ? `\n\nCONTEXTO ESPECIAL: ${contextoExtra}` : '');
 
     // Preparar mensajes para OpenAI
