@@ -143,7 +143,7 @@ export async function generarSecuenciaCierre(contexto: ContextoCierre): Promise<
   // Agregar mensaje de proceso de compra si está en cierre
   if (contexto.etapaPipeline === 'CIERRE') {
     secuencia.push(
-      `Para concretar tu pedido solo necesito:\n1️⃣ Tu nombre completo\n2️⃣ Dirección de envío\n3️⃣ Método de pago preferido\n\n¿Empezamos? 😊`
+      `Para concretar tu pedido solo necesito:\n1️⃣ Tu nombre completo\n2️⃣ Dirección de envío\n3️⃣ Método de pago (Western Union, MoneyGram o cuenta bancaria USA)\n\n¿Empezamos? 😊`
     );
   }
 
@@ -191,5 +191,5 @@ export function detectarSeñalesCompra(mensaje: string): boolean {
 
 // Obtener mensaje de proceso de compra
 export function obtenerMensajeProcesoPago(): string {
-  return `¡Genial! 🎉 Para procesar tu pedido necesito estos datos:\n\n👤 *Nombre completo:*\n📍 *Dirección de envío:*\n📱 *Teléfono de contacto:*\n💳 *Método de pago:* (efectivo/transferencia/tarjeta)\n\nEnviámelos y en seguida proceso todo! 😊`;
+  return `¡Genial! 🎉 Para procesar tu pedido necesito estos datos:\n\n👤 *Nombre completo:*\n📍 *Dirección de envío:*\n📱 *Teléfono de contacto:*\n💳 *Método de pago:* (Western Union, MoneyGram o cuenta bancaria USA)\n\nEnviámelos y en seguida proceso todo! 😊`;
 }

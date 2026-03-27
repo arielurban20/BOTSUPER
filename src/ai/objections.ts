@@ -98,7 +98,7 @@ export const RESPUESTAS_OBJECION: Record<TipoObjecion, string[]> = {
   ],
   DESCONFIANZA: [
     '🔒 ¡Totalmente entendible! Somos [número] años en el mercado y tenés garantía de devolución. Además, podés ver opiniones reales de clientes. ¿Querés que te comparta algunas?',
-    '✅ Me alegra que preguntes. La seguridad es lo primero. Operamos con [método de pago seguro] y tenés garantía completa. ¿Qué más necesitás saber para sentirte seguro/a?',
+    '✅ Me alegra que preguntes. La seguridad es lo primero. Aceptamos Western Union, MoneyGram o transferencia a cuenta bancaria en Estados Unidos, y tenés garantía completa. ¿Qué más necesitás saber?',
   ],
   MALA_EXPERIENCIA_PREVIA: [
     '😔 Lamento mucho lo que viviste. Eso no está bien y lo entiendo perfectamente. Por eso nosotros trabajamos diferente: con garantía real y soporte post-venta. ¿Me das la oportunidad de demostrártelo?',

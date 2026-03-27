@@ -8,7 +8,10 @@ import { obtenerOCrearPipeline, actualizarEtapaPipeline, parsearEtapa, debeCrear
 import { programarSeguimientos, cancelarSeguimientos } from '../sales/followup';
 import { detectarSeñalesCompra, obtenerMensajeProcesoPago } from '../sales/closer';
 import { obtenerOCrearCliente, actualizarNombreCliente, extraerNombreDeTexto, pausarCliente, reactivarCliente, clientePausado } from '../services/customer';
-import { guardarMensaje, obtenerHistorialParaIA } from '../services/conversation';
+import { guardarMensaje, obtenerHistorialParaIA, contarMensajes } from '../services/conversation';
+import { obtenerMemoriaCliente, actualizarMemoriaDesdeHistorial, formatearMemoriaParaPrompt } from '../services/memory';
+import { aprenderDeRespuestaManual, obtenerAprendizajesParaPrompt } from '../learning/sellerLearning';
+import { verificarYGenerarResumen } from '../learning/conversationSummarizer';
 import { enviarMensajeTexto, marcarComoLeido, enviarTypingIndicator, calcularDelayTipeo } from './sender';
 import type { WebhookMessage, WebhookContact } from './webhook';
 
@@ -71,6 +74,13 @@ export async function procesarMensajeEntrante(
     // Obtener catálogo para el contexto
     const catalogo = await formatearCatalogoParaIA();
 
+    // Obtener memoria persistente del cliente y aprendizajes del vendedor en paralelo
+    const [memoriaRaw, aprendizajesTexto] = await Promise.all([
+      obtenerMemoriaCliente(cliente.id),
+      obtenerAprendizajesParaPrompt(8),
+    ]);
+    const memoriaTexto = memoriaRaw ? formatearMemoriaParaPrompt(memoriaRaw) : undefined;
+
     // Generar respuesta con la IA
     const resultado = await generarRespuesta(sanitizarTexto(textoMensaje), {
       telefono,
@@ -79,6 +89,8 @@ export async function procesarMensajeEntrante(
       catalogoProductos: catalogo,
       etapaPipeline: pipeline.etapa,
       notasCliente: cliente.notas || undefined,
+      memoriaCliente: memoriaTexto || undefined,
+      aprendizajesVendedor: aprendizajesTexto || undefined,
     });
 
     // Actualizar etapa del pipeline si cambió
@@ -125,6 +137,14 @@ export async function procesarMensajeEntrante(
       await programarSeguimientos(cliente.id);
     }
 
+    // Actualizar memoria del cliente y verificar resumen en background (no bloqueante)
+    const historialActualizado = await obtenerHistorialParaIA(cliente.id, 30);
+    const totalMensajes = await contarMensajes(cliente.id);
+    void Promise.all([
+      actualizarMemoriaDesdeHistorial(cliente.id, historialActualizado),
+      verificarYGenerarResumen(cliente.id, totalMensajes, historialActualizado),
+    ]).catch((err) => logger.warn('Error en actualización de aprendizaje en background:', err));
+
     logger.info(`✅ Mensaje procesado para ${telefono}`);
   } catch (error) {
     logger.error(`Error al procesar mensaje de ${telefono}:`, error);
@@ -170,7 +190,7 @@ function extraerTextoMensaje(mensaje: WebhookMessage): string | null {
   }
 }
 
-// Procesar comandos del dueño (#humano, #bot, #estado)
+// Procesar comandos del dueño (#humano, #bot, #estado, #respuesta:)
 async function procesarComando(texto: string, telefono: string): Promise<void> {
   const comando = texto.toLowerCase();
 
@@ -195,6 +215,22 @@ async function procesarComando(texto: string, telefono: string): Promise<void> {
       const estadoTexto = pausado ? 'PAUSADO 🔴' : 'ACTIVO 🟢';
       await enviarMensajeTexto(telefono, `ℹ️ Estado del bot para este cliente: ${estadoTexto}`);
       logger.info(`ℹ️ Comando #estado ejecutado para ${telefono}: ${estadoTexto}`);
+    } else if (texto.toLowerCase().startsWith('#respuesta:')) {
+      // Aprender del estilo de respuesta manual del vendedor
+      const textoRespuesta = texto.slice('#respuesta:'.length).trim();
+      if (textoRespuesta) {
+        const cliente = await obtenerOCrearCliente(telefono);
+        const historial = await obtenerHistorialParaIA(cliente.id, 10);
+        const contextoCliente = historial.length > 0
+          ? historial.slice(-3).map((m) => `${m.rol === 'user' ? 'Cliente' : 'Vendedor'}: ${m.contenido}`).join('\n')
+          : undefined;
+        const cantidadAprendizajes = await aprenderDeRespuestaManual(textoRespuesta, contextoCliente);
+        await enviarMensajeTexto(
+          telefono,
+          `📚 Aprendizaje registrado (${cantidadAprendizajes} patrón(es) extraídos). Pendiente de aprobación.`
+        );
+        logger.info(`📚 Aprendizaje manual registrado desde ${telefono}`);
+      }
     } else {
       logger.debug(`Comando desconocido ignorado: ${texto} de ${telefono}`);
     }

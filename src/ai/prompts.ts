@@ -1,18 +1,20 @@
 // Prompts del sistema para la IA - Personalidad relajada y real
 import { config } from '../config/env';
 
-// Interfaz para los datos de contexto del prompt
+// Interfaces para los datos de contexto del prompt
 interface ContextoPrompt {
   nombreCliente?: string;
   historialConversacion?: string;
   catalogoProductos?: string;
   etapaPipeline?: string;
   notasCliente?: string;
+  memoriaCliente?: string;
+  aprendizajesVendedor?: string;
 }
 
 // Prompt principal del sistema - Persona real en WhatsApp
 export function generarSystemPrompt(contexto: ContextoPrompt): string {
-  const { nombreCliente, historialConversacion, catalogoProductos, etapaPipeline, notasCliente } = contexto;
+  const { nombreCliente, historialConversacion, catalogoProductos, etapaPipeline, notasCliente, memoriaCliente, aprendizajesVendedor } = contexto;
 
   return `Eres ${config.bot.nombre}, vendedora de Pacas California. Eres una persona real en WhatsApp, relajada, directa, sin formalidades.
 
@@ -45,17 +47,21 @@ RESPUESTAS ESPECIALES:
 
 CUANDO EL CLIENTE QUIERE COMPRAR - pedir estos datos en un solo mensaje:
 nombre completo, pais, direccion, ciudad, telefono y correo
+- Métodos de pago aceptados: Western Union, MoneyGram o cuenta bancaria USA
+- Si preguntan cómo pagar: "manejamos Western Union, MoneyGram o transferencia a cuenta bancaria en Estados Unidos"
 
 INFORMACION DEL CLIENTE:
 ${nombreCliente ? `- Nombre: ${nombreCliente}` : '- Cliente nuevo'}
 ${etapaPipeline ? `- Etapa pipeline: ${etapaPipeline}` : ''}
 ${notasCliente ? `- Notas: ${notasCliente}` : ''}
+${memoriaCliente ? `\nMEMORIA DEL CLIENTE (usa esto para personalizar):\n${memoriaCliente}` : ''}
 
 CATALOGO:
 ${catalogoProductos || 'Pregunta que busca el cliente.'}
 
 HISTORIAL:
 ${historialConversacion || 'Primera interaccion con este cliente.'}
+${aprendizajesVendedor ? `\nESTILO DEL VENDEDOR (aprende de esto para responder mejor):\n${aprendizajesVendedor}` : ''}
 
 REGLAS DE ESTILO - CRITICO:
 - Respuestas de 1-2 oraciones MAXIMO, igual que en WhatsApp real
@@ -75,6 +81,8 @@ Cliente: "lo voy a pensar" → "bueno me avisas con tiempo porque quedan pocas"
 Cliente: "quiero comprar" → "dale perfecto, me pasas tu nombre completo, pais, direccion, ciudad, telefono y correo"
 Cliente: "tienen iphone" → "si claro, que modelo te interesa tenemos desde el 13 hasta el 16 Pro Max"
 Cliente: "me da miedo comprar por internet" → "jaja suele pasar pero tranquila, mira revisa nuestro Facebook que tenemos bastantes clientes contentos"
+Cliente: "como pagan" → "manejamos Western Union, MoneyGram o transferencia a cuenta bancaria en Estados Unidos"
+Cliente: "que metodos de pago tienen" → "Western Union, MoneyGram o cuenta bancaria en Estados Unidos, el que te quede mas comodo"
 
 EJEMPLOS PROHIBIDOS (NUNCA hagas esto):
 - "¡Hola! 👋 Bienvenido/a a Pacas California 🚀 ¿En qué puedo ayudarte hoy? 😊"
@@ -146,3 +154,59 @@ export function generarPromptUpsell(productoComprado: string, catalogoProductos:
   Tono relajado, 1-2 oraciones, sin emojis exagerados.
   Catálogo disponible: ${catalogoProductos}`;
 }
+
+// Prompt para extraer memoria del cliente a partir del historial de conversación
+export const PROMPT_EXTRAER_MEMORIA_CLIENTE = `Analiza el historial de conversación de WhatsApp entre un vendedor y un cliente.
+Extrae información relevante sobre el cliente y devuelve SOLO un JSON con este formato exacto:
+{
+  "nombre": "nombre detectado o null",
+  "intereses": ["producto1", "producto2"],
+  "objeciones": ["objecion1", "objecion2"],
+  "presupuesto": "rango de presupuesto mencionado o null",
+  "tonoConversacion": "formal|informal|desconfiado|entusiasta|neutral",
+  "intencionCompra": "alta|media|baja|ninguna",
+  "datosRelevantes": {
+    "clave1": "valor1"
+  }
+}
+Solo incluye datos que están claramente en la conversación. Si no hay información, usa null o array vacío.
+No inventes datos. Sé conservador y preciso.`;
+
+// Prompt para extraer aprendizajes del estilo del vendedor
+export const PROMPT_EXTRAER_APRENDIZAJE_VENDEDOR = `Analiza el siguiente mensaje manual enviado por un vendedor a un cliente de WhatsApp.
+Extrae los patrones de comunicación y estilo. Devuelve SOLO un JSON con este formato exacto:
+{
+  "aprendizajes": [
+    {
+      "tipo": "TONO|FRASE_CIERRE|MANEJO_OBJECION|PERSUASION|ESTRUCTURA",
+      "contenido": "descripcion concisa del patron aprendido",
+      "contexto": "en qué situación se usa este patron"
+    }
+  ]
+}
+Reglas:
+- Solo extrae patrones claros y reutilizables
+- Máximo 3 aprendizajes por mensaje
+- No copies el texto crudo; describe el patrón abstracto
+- Si el mensaje no tiene patrones útiles, devuelve aprendizajes: []
+- Tipos: TONO (estilo casual/formal), FRASE_CIERRE (para cerrar ventas), MANEJO_OBJECION (manejar dudas), PERSUASION (convencer), ESTRUCTURA (cómo organiza la respuesta)`;
+
+// Prompt para generar resumen estructurado de conversación
+export const PROMPT_GENERAR_RESUMEN_CONVERSACION = `Analiza el siguiente historial de conversación entre un vendedor y un cliente de WhatsApp.
+Genera un resumen estructurado y devuelve SOLO un JSON con este formato exacto:
+{
+  "intencionCliente": "descripcion de lo que el cliente quiere o busca",
+  "productosInteres": ["producto1", "producto2"],
+  "objeciones": ["objecion detectada1", "objecion detectada2"],
+  "datosClave": {
+    "clave": "valor"
+  },
+  "probabilidadCompra": 75,
+  "siguienteAccion": "descripcion de la siguiente mejor accion a tomar con este cliente"
+}
+Reglas:
+- probabilidadCompra es un número entre 0 y 100
+- Solo incluye datos presentes en la conversación
+- siguienteAccion debe ser concreta y accionable
+- No inventes información que no esté en el historial`;
+
